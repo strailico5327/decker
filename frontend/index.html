@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Decker</title>
+    <link rel="stylesheet" href="./src/styles.css">
+    <script type="module" src="./src/main.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">Phrase memory</p>
+        <h1>Decker</h1>
+        <p class="subtitle">
+          Build steady recall for idioms, phrasal verbs, collocations, and reusable sentence patterns.
+        </p>
+      </header>
+
+      <section class="status-panel" aria-labelledby="status-heading">
+        <div>
+          <h2 id="status-heading">Backend status</h2>
+          <p id="backend-status" class="status-text" aria-live="polite">Checking backend...</p>
+        </div>
+      </section>
+
+      <nav class="quick-actions" aria-label="Primary actions">
+        <button type="button" disabled>Start Review</button>
+        <button type="button" disabled>Decks</button>
+        <button type="button" disabled>Weak Items</button>
+        <button type="button" disabled>Settings</button>
+      </nav>
+
+      <section class="deck-section" aria-labelledby="decks-heading">
+        <div class="section-heading">
+          <h2 id="decks-heading">Decks</h2>
+          <p id="deck-count">Loading...</p>
+        </div>
+        <div id="deck-list" class="deck-list" aria-live="polite"></div>
+      </section>
+    </main>
+  </body>
+</html>
