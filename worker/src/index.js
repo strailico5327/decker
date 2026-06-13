@@ -113,6 +113,61 @@ async function getDeckDetail(env, deckId) {
   };
 }
 
+function mapPhraseRow(row) {
+  return {
+    id: row.id,
+    deckId: row.deckId,
+    phrase: row.phrase,
+    type: row.type,
+    meaning: row.meaning,
+    example: row.example,
+    pattern: row.pattern,
+    trap: row.trap,
+    tags: parseTags(row.tagsJson),
+  };
+}
+
+function parseLimit(value) {
+  const limit = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(limit) || limit < 1) {
+    return null;
+  }
+
+  return Math.min(limit, 50);
+}
+
+async function getReviewItems(env, { deckId, limit }) {
+  const selectFields = `
+    SELECT
+      id,
+      deck_id AS deckId,
+      phrase,
+      type,
+      meaning,
+      example,
+      pattern,
+      trap,
+      tags_json AS tagsJson
+    FROM phrases
+  `;
+
+  let statement;
+
+  if (deckId && limit) {
+    statement = env.DB.prepare(`${selectFields} WHERE deck_id = ? ORDER BY created_at ASC, phrase ASC LIMIT ?`).bind(deckId, limit);
+  } else if (deckId) {
+    statement = env.DB.prepare(`${selectFields} WHERE deck_id = ? ORDER BY created_at ASC, phrase ASC`).bind(deckId);
+  } else if (limit) {
+    statement = env.DB.prepare(`${selectFields} ORDER BY created_at ASC, phrase ASC LIMIT ?`).bind(limit);
+  } else {
+    statement = env.DB.prepare(`${selectFields} ORDER BY created_at ASC, phrase ASC`);
+  }
+
+  const { results } = await statement.all();
+  return (results ?? []).map(mapPhraseRow);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -152,6 +207,21 @@ export default {
       try {
         const decks = await getDecks(env);
         return jsonResponse(decks);
+      } catch (error) {
+        return jsonResponse({ error: "Database error" }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/review") {
+      if (request.method !== "GET") {
+        return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+      }
+
+      try {
+        const deckId = url.searchParams.get("deckId");
+        const limit = parseLimit(url.searchParams.get("limit"));
+        const items = await getReviewItems(env, { deckId, limit });
+        return jsonResponse({ items });
       } catch (error) {
         return jsonResponse({ error: "Database error" }, { status: 500 });
       }

@@ -27,6 +27,10 @@ body {
   line-height: 1.5;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 button,
 input,
 select,
@@ -204,7 +208,8 @@ h2 {
   color: var(--error);
 }
 
-.deck-detail {
+.deck-detail,
+.quiz-section {
   display: grid;
   gap: 12px;
 }
@@ -289,6 +294,53 @@ h2 {
   padding: 4px 8px;
   background: #eef1ef;
   color: var(--muted);
+}
+
+.quiz-question {
+  margin-bottom: 4px;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.answer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.answer-button {
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.answer-button:hover,
+.answer-button:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.answer-button:disabled {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.feedback {
+  min-height: 28px;
+  margin-bottom: 0;
+  font-weight: 700;
+}
+
+.feedback[data-state="correct"] {
+  color: var(--accent-strong);
+}
+
+.feedback[data-state="wrong"] {
+  color: var(--error);
 }
 
 @media (min-width: 680px) {

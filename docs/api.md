@@ -167,6 +167,26 @@ Example:
 /api/review?deckId=deck_war_doctor_ch1&limit=10
 ```
 
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "phrase_run_into_001",
+      "deckId": "deck_war_doctor_ch1",
+      "phrase": "run into",
+      "type": "phrv",
+      "meaning": "meet someone by chance",
+      "example": "I ran into an old friend at the station.",
+      "pattern": "run into + person",
+      "trap": "Similar to come across, but often used for meeting people.",
+      "tags": ["daily", "B1"]
+    }
+  ]
+}
+```
+
 ## POST /api/attempts
 
 Saves one answer attempt and updates phrase progress.

@@ -3,6 +3,10 @@ const deckList = document.querySelector("#deck-list");
 const deckCount = document.querySelector("#deck-count");
 const deckSection = document.querySelector(".deck-section");
 const deckDetail = document.querySelector("#deck-detail");
+const startReviewButton = document.querySelector("#start-review");
+const quizSection = document.querySelector("#quiz-section");
+
+let availableDecks = [];
 
 function getApiBase() {
   // Local frontend dev server runs separately from the Worker.
@@ -40,18 +44,31 @@ function setBackendStatus(message, state) {
 function showDeckList() {
   deckSection.hidden = false;
   deckDetail.hidden = true;
+  quizSection.hidden = true;
   deckDetail.textContent = "";
+  quizSection.textContent = "";
 }
 
 function showDeckDetail() {
   deckSection.hidden = true;
   deckDetail.hidden = false;
+  quizSection.hidden = true;
+  quizSection.textContent = "";
+}
+
+function showQuiz() {
+  deckSection.hidden = true;
+  deckDetail.hidden = true;
+  quizSection.hidden = false;
+  deckDetail.textContent = "";
 }
 
 function renderDecks(decks) {
   deckList.textContent = "";
+  availableDecks = Array.isArray(decks) ? decks : [];
+  startReviewButton.disabled = availableDecks.length === 0;
 
-  if (!Array.isArray(decks) || decks.length === 0) {
+  if (availableDecks.length === 0) {
     deckCount.textContent = "No decks yet";
     const empty = document.createElement("p");
     empty.className = "empty-state";
@@ -60,9 +77,9 @@ function renderDecks(decks) {
     return;
   }
 
-  deckCount.textContent = `${decks.length} deck${decks.length === 1 ? "" : "s"}`;
+  deckCount.textContent = `${availableDecks.length} deck${availableDecks.length === 1 ? "" : "s"}`;
 
-  for (const deck of decks) {
+  for (const deck of availableDecks) {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "deck-card";
@@ -192,6 +209,86 @@ function renderDeckDetailError() {
   deckDetail.append(createBackButton(), message);
 }
 
+function shuffle(items) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
+function createAnswerOptions(questionItem, reviewItems) {
+  const wrongMeanings = reviewItems
+    .filter((item) => item.id !== questionItem.id && item.meaning)
+    .map((item) => item.meaning)
+    .filter((meaning, index, meanings) => meanings.indexOf(meaning) === index)
+    .slice(0, 3);
+
+  return shuffle([questionItem.meaning, ...wrongMeanings]).slice(0, 4);
+}
+
+function renderQuiz(reviewItems) {
+  quizSection.textContent = "";
+  showQuiz();
+
+  if (!Array.isArray(reviewItems) || reviewItems.length === 0) {
+    const message = document.createElement("p");
+    message.className = "empty-state";
+    message.textContent = "This deck does not have review items yet.";
+    quizSection.append(createBackButton(), message);
+    return;
+  }
+
+  const questionItem = reviewItems[0];
+  const correctAnswer = questionItem.meaning;
+  const title = document.createElement("h2");
+  title.textContent = "Review";
+
+  const question = document.createElement("p");
+  question.className = "quiz-question";
+  question.textContent = `What does "${questionItem.phrase}" mean?`;
+
+  const answers = document.createElement("div");
+  answers.className = "answer-list";
+
+  const feedback = document.createElement("p");
+  feedback.className = "feedback";
+
+  for (const option of createAnswerOptions(questionItem, reviewItems)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "answer-button";
+    button.textContent = option;
+    button.addEventListener("click", () => {
+      const isCorrect = option === correctAnswer;
+      feedback.textContent = isCorrect ? "Correct" : `Wrong, correct answer: ${correctAnswer}`;
+      feedback.dataset.state = isCorrect ? "correct" : "wrong";
+
+      for (const answerButton of answers.querySelectorAll("button")) {
+        answerButton.disabled = true;
+      }
+    });
+
+    answers.append(button);
+  }
+
+  quizSection.append(createBackButton(), title, question, answers, feedback);
+}
+
+function renderQuizError() {
+  quizSection.textContent = "";
+  showQuiz();
+
+  const message = document.createElement("p");
+  message.className = "empty-state error";
+  message.textContent = "Review items could not be loaded right now. Go back and try again.";
+
+  quizSection.append(createBackButton(), message);
+}
+
 async function loadHealth() {
   try {
     const health = await fetchJson("/api/health");
@@ -211,6 +308,8 @@ async function loadDecks() {
     const decks = await fetchJson("/api/decks");
     renderDecks(decks);
   } catch (error) {
+    availableDecks = [];
+    startReviewButton.disabled = true;
     deckCount.textContent = "Could not load decks";
     deckList.textContent = "";
 
@@ -241,6 +340,31 @@ async function loadDeckDetail(deckId) {
     renderDeckDetailError();
   }
 }
+
+async function startReview() {
+  const firstDeck = availableDecks[0];
+
+  if (!firstDeck) {
+    return;
+  }
+
+  quizSection.textContent = "";
+  showQuiz();
+
+  const loading = document.createElement("p");
+  loading.className = "empty-state";
+  loading.textContent = "Loading review...";
+  quizSection.append(loading);
+
+  try {
+    const review = await fetchJson(`/api/review?deckId=${encodeURIComponent(firstDeck.id)}&limit=10`);
+    renderQuiz(review.items);
+  } catch (error) {
+    renderQuizError();
+  }
+}
+
+startReviewButton.addEventListener("click", startReview);
 
 loadHealth();
 loadDecks();
