@@ -29,9 +29,9 @@ The initial skeleton includes:
 - A static, framework-free frontend.
 - A Cloudflare Worker API skeleton.
 - `GET /api/health`, `GET /api/bootstrap`, and `GET /api/decks`.
-- A temporary sample deck response while D1 integration is still pending.
+- A D1-backed `GET /api/decks` response.
 
-Quiz logic, custom authentication, IndexedDB caching, and D1-backed persistence are not implemented yet.
+Quiz logic, custom authentication, IndexedDB caching, and D1-backed write flows are not implemented yet.
 
 ## Local Development
 
@@ -57,6 +57,12 @@ cd worker
 npx wrangler dev
 ```
 
+For local D1 testing, apply the schema to Wrangler's local database before calling `GET /api/decks`:
+
+```sh
+npx wrangler d1 execute decker-db --local --file ../docs/schema.sql
+```
+
 The Worker exposes:
 
 - `GET /api/health`
@@ -69,4 +75,4 @@ Unknown `/api/*` routes return JSON `404` responses.
 
 - The frontend does not contain secrets or API keys.
 - The data model and database schema have not changed.
-- Cloudflare D1 integration should follow `docs/schema.sql` when it is added.
+- Cloudflare D1 integration follows `docs/schema.sql`.

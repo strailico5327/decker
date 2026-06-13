@@ -29,8 +29,27 @@ function notFound(pathname) {
   );
 }
 
+async function getDecks(env) {
+  // D1 is the source of truth; this keeps the API shape frontend-friendly.
+  const statement = env.DB.prepare(`
+    SELECT
+      decks.id,
+      decks.title,
+      decks.source_name AS sourceName,
+      COUNT(phrases.id) AS phraseCount,
+      decks.updated_at AS updatedAt
+    FROM decks
+    LEFT JOIN phrases ON phrases.deck_id = decks.id
+    GROUP BY decks.id, decks.title, decks.source_name, decks.updated_at
+    ORDER BY decks.updated_at DESC
+  `);
+
+  const { results } = await statement.all();
+  return results ?? [];
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
@@ -65,16 +84,12 @@ export default {
         return jsonResponse({ error: "Method not allowed" }, { status: 405 });
       }
 
-      const now = new Date().toISOString();
-      return jsonResponse([
-        {
-          id: "deck_sample",
-          title: "Sample Deck",
-          sourceName: "Demo",
-          phraseCount: 3,
-          updatedAt: now,
-        },
-      ]);
+      try {
+        const decks = await getDecks(env);
+        return jsonResponse(decks);
+      } catch (error) {
+        return jsonResponse({ error: "Database error" }, { status: 500 });
+      }
     }
 
     return notFound(url.pathname);
