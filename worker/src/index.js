@@ -48,6 +48,71 @@ async function getDecks(env) {
   return results ?? [];
 }
 
+function parseTags(tagsJson) {
+  if (!tagsJson) {
+    return [];
+  }
+
+  try {
+    const tags = JSON.parse(tagsJson);
+    return Array.isArray(tags) ? tags : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+async function getDeckDetail(env, deckId) {
+  const deck = await env.DB.prepare(`
+    SELECT
+      id,
+      title,
+      source_name AS sourceName,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM decks
+    WHERE id = ?
+  `)
+    .bind(deckId)
+    .first();
+
+  if (!deck) {
+    return null;
+  }
+
+  const { results } = await env.DB.prepare(`
+    SELECT
+      id,
+      phrase,
+      type,
+      meaning,
+      example,
+      pattern,
+      trap,
+      tags_json AS tagsJson
+    FROM phrases
+    WHERE deck_id = ?
+    ORDER BY created_at ASC, phrase ASC
+  `)
+    .bind(deckId)
+    .all();
+
+  const phrases = (results ?? []).map((phrase) => ({
+    id: phrase.id,
+    phrase: phrase.phrase,
+    type: phrase.type,
+    meaning: phrase.meaning,
+    example: phrase.example,
+    pattern: phrase.pattern,
+    trap: phrase.trap,
+    tags: parseTags(phrase.tagsJson),
+  }));
+
+  return {
+    ...deck,
+    phrases,
+  };
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -87,6 +152,26 @@ export default {
       try {
         const decks = await getDecks(env);
         return jsonResponse(decks);
+      } catch (error) {
+        return jsonResponse({ error: "Database error" }, { status: 500 });
+      }
+    }
+
+    const deckDetailMatch = url.pathname.match(/^\/api\/decks\/([^/]+)$/);
+    if (deckDetailMatch) {
+      if (request.method !== "GET") {
+        return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+      }
+
+      try {
+        const deckId = decodeURIComponent(deckDetailMatch[1]);
+        const deck = await getDeckDetail(env, deckId);
+
+        if (!deck) {
+          return jsonResponse({ error: "Deck not found" }, { status: 404 });
+        }
+
+        return jsonResponse(deck);
       } catch (error) {
         return jsonResponse({ error: "Database error" }, { status: 500 });
       }

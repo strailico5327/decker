@@ -95,6 +95,38 @@ Response:
 
 Returns one deck with its phrases.
 
+Response:
+
+```json
+{
+  "id": "deck_sample",
+  "title": "Sample Deck",
+  "sourceName": "Demo",
+  "createdAt": "2026-06-13T00:00:00Z",
+  "updatedAt": "2026-06-13T00:00:00Z",
+  "phrases": [
+    {
+      "id": "phrase_run_into_001",
+      "phrase": "run into",
+      "type": "phrv",
+      "meaning": "meet someone by chance",
+      "example": "I ran into an old friend at the station.",
+      "pattern": "run into + person",
+      "trap": "Similar to come across, but often used for meeting people.",
+      "tags": ["daily", "B1"]
+    }
+  ]
+}
+```
+
+If the deck does not exist:
+
+```json
+{
+  "error": "Deck not found"
+}
+```
+
 ## POST /api/decks/:id/phrases
 
 Adds phrases to a deck.
