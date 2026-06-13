@@ -84,7 +84,8 @@ h2 {
 
 .status-panel,
 .deck-card,
-.phrase-card {
+.phrase-card,
+.weak-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -209,7 +210,9 @@ h2 {
 }
 
 .deck-detail,
-.quiz-section {
+.quiz-section,
+.weak-section,
+.import-section {
   display: grid;
   gap: 12px;
 }
@@ -237,7 +240,8 @@ h2 {
   margin-top: 8px;
 }
 
-.phrase-card {
+.phrase-card,
+.weak-card {
   padding: 16px;
 }
 
@@ -341,6 +345,86 @@ h2 {
 
 .feedback[data-state="wrong"] {
   color: var(--error);
+}
+
+.save-warning {
+  min-height: 24px;
+  margin-bottom: 0;
+  color: var(--warn);
+  font-size: 0.92rem;
+}
+
+.weak-list {
+  display: grid;
+  gap: 12px;
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.progress-detail {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.progress-detail strong {
+  color: var(--text);
+}
+
+.import-textarea {
+  width: 100%;
+  min-height: 320px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+
+.import-textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.primary-button {
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.import-message {
+  min-height: 24px;
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.import-message[data-state="success"] {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.import-message[data-state="error"] {
+  color: var(--error);
+  font-weight: 700;
 }
 
 @media (min-width: 680px) {

@@ -68,12 +68,13 @@ Response:
 
 ## POST /api/decks
 
-Creates a new deck.
+Creates or updates a deck.
 
 Request:
 
 ```json
 {
+  "id": "deck_war_doctor_ch1",
   "title": "War Doctor Ch.1",
   "sourceName": "War Doctor"
 }
@@ -129,7 +130,7 @@ If the deck does not exist:
 
 ## POST /api/decks/:id/phrases
 
-Adds phrases to a deck.
+Adds or updates phrases in a deck.
 
 Request:
 
@@ -137,6 +138,7 @@ Request:
 {
   "phrases": [
     {
+      "id": "phrase_run_into_001",
       "phrase": "run into",
       "type": "phrv",
       "meaning": "meet someone by chance",
@@ -187,6 +189,24 @@ Response:
 }
 ```
 
+Response:
+
+```json
+{
+  "saved": true,
+  "deckId": "deck_war_doctor_ch1",
+  "phraseCount": 1
+}
+```
+
+Invalid import requests return JSON errors:
+
+```json
+{
+  "error": "title is required"
+}
+```
+
 ## POST /api/attempts
 
 Saves one answer attempt and updates phrase progress.
@@ -196,19 +216,22 @@ Request:
 ```json
 {
   "phraseId": "phrase_run_into_001",
-  "questionType": "gap-fill",
-  "selectedAnswer": "ran into",
-  "correct": true,
-  "rating": "hesitated",
-  "deviceId": "ipad"
+  "deckId": "deck_sample",
+  "questionType": "meaning-choice",
+  "selectedAnswer": "meet someone by chance",
+  "correctAnswer": "meet someone by chance",
+  "correct": true
 }
 ```
+
+The Worker records the attempt using the existing `attempts` table fields and updates `phrase_progress`. `deckId` and `correctAnswer` are accepted from the frontend for request context, but they are not stored as separate attempt columns in the current schema.
 
 Response:
 
 ```json
 {
   "saved": true,
+  "correct": true,
   "newStatus": "learning",
   "mastery": 1
 }
@@ -217,6 +240,37 @@ Response:
 ## GET /api/weak
 
 Returns weak phrases.
+
+Weak phrases are phrases with progress rows where `wrong_count > 0`, `status = "learning"`, or low mastery.
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "phrase_run_into_001",
+      "deckId": "deck_sample",
+      "phrase": "run into",
+      "type": "phrv",
+      "meaning": "meet someone by chance",
+      "example": "I ran into an old friend at the station.",
+      "pattern": "run into + person",
+      "trap": "Similar to come across, but often used for meeting people.",
+      "tags": ["daily", "B1"],
+      "progress": {
+        "attempts": 3,
+        "correctCount": 1,
+        "wrongCount": 2,
+        "hesitatedCount": 0,
+        "mastery": 0,
+        "status": "learning",
+        "lastReviewedAt": "2026-06-13T12:00:00Z"
+      }
+    }
+  ]
+}
+```
 
 ## GET /api/sync
 

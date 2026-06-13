@@ -4,7 +4,11 @@ const deckCount = document.querySelector("#deck-count");
 const deckSection = document.querySelector(".deck-section");
 const deckDetail = document.querySelector("#deck-detail");
 const startReviewButton = document.querySelector("#start-review");
+const weakItemsButton = document.querySelector("#weak-items");
+const importDeckButton = document.querySelector("#import-deck");
 const quizSection = document.querySelector("#quiz-section");
+const weakSection = document.querySelector("#weak-section");
+const importSection = document.querySelector("#import-section");
 
 let availableDecks = [];
 
@@ -29,11 +33,32 @@ async function fetchJson(path) {
     },
   });
 
+  const payload = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    throw new Error(payload?.error || `Request failed with status ${response.status}`);
   }
 
-  return response.json();
+  return payload;
+}
+
+async function postJson(path, body) {
+  const response = await fetch(apiPath(path), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(payload?.error || `Request failed with status ${response.status}`);
+  }
+
+  return payload;
 }
 
 function setBackendStatus(message, state) {
@@ -45,22 +70,56 @@ function showDeckList() {
   deckSection.hidden = false;
   deckDetail.hidden = true;
   quizSection.hidden = true;
+  weakSection.hidden = true;
+  importSection.hidden = true;
   deckDetail.textContent = "";
   quizSection.textContent = "";
+  weakSection.textContent = "";
+  importSection.textContent = "";
 }
 
 function showDeckDetail() {
   deckSection.hidden = true;
   deckDetail.hidden = false;
   quizSection.hidden = true;
+  weakSection.hidden = true;
+  importSection.hidden = true;
   quizSection.textContent = "";
+  weakSection.textContent = "";
+  importSection.textContent = "";
 }
 
 function showQuiz() {
   deckSection.hidden = true;
   deckDetail.hidden = true;
   quizSection.hidden = false;
+  weakSection.hidden = true;
+  importSection.hidden = true;
   deckDetail.textContent = "";
+  weakSection.textContent = "";
+  importSection.textContent = "";
+}
+
+function showWeakItems() {
+  deckSection.hidden = true;
+  deckDetail.hidden = true;
+  quizSection.hidden = true;
+  weakSection.hidden = false;
+  importSection.hidden = true;
+  deckDetail.textContent = "";
+  quizSection.textContent = "";
+  importSection.textContent = "";
+}
+
+function showImport() {
+  deckSection.hidden = true;
+  deckDetail.hidden = true;
+  quizSection.hidden = true;
+  weakSection.hidden = true;
+  importSection.hidden = false;
+  deckDetail.textContent = "";
+  quizSection.textContent = "";
+  weakSection.textContent = "";
 }
 
 function renderDecks(decks) {
@@ -257,25 +316,42 @@ function renderQuiz(reviewItems) {
   const feedback = document.createElement("p");
   feedback.className = "feedback";
 
+  const saveWarning = document.createElement("p");
+  saveWarning.className = "save-warning";
+
   for (const option of createAnswerOptions(questionItem, reviewItems)) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "answer-button";
     button.textContent = option;
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const isCorrect = option === correctAnswer;
       feedback.textContent = isCorrect ? "Correct" : `Wrong, correct answer: ${correctAnswer}`;
       feedback.dataset.state = isCorrect ? "correct" : "wrong";
+      saveWarning.textContent = "";
 
       for (const answerButton of answers.querySelectorAll("button")) {
         answerButton.disabled = true;
+      }
+
+      try {
+        await postJson("/api/attempts", {
+          phraseId: questionItem.id,
+          deckId: questionItem.deckId,
+          questionType: "meaning-choice",
+          selectedAnswer: option,
+          correctAnswer,
+          correct: isCorrect,
+        });
+      } catch (error) {
+        saveWarning.textContent = "Answer shown, but the attempt could not be saved.";
       }
     });
 
     answers.append(button);
   }
 
-  quizSection.append(createBackButton(), title, question, answers, feedback);
+  quizSection.append(createBackButton(), title, question, answers, feedback, saveWarning);
 }
 
 function renderQuizError() {
@@ -287,6 +363,182 @@ function renderQuizError() {
   message.textContent = "Review items could not be loaded right now. Go back and try again.";
 
   quizSection.append(createBackButton(), message);
+}
+
+function appendProgressDetail(parent, label, value) {
+  const item = document.createElement("p");
+  item.className = "progress-detail";
+
+  const labelText = document.createElement("strong");
+  labelText.textContent = `${label}: `;
+
+  item.append(labelText, String(value ?? "none"));
+  parent.append(item);
+}
+
+function renderWeakItems(items) {
+  weakSection.textContent = "";
+  showWeakItems();
+
+  const title = document.createElement("h2");
+  title.textContent = "Weak Items";
+
+  const weakItems = Array.isArray(items) ? items : [];
+  const count = document.createElement("p");
+  count.className = "deck-meta";
+  count.textContent = `${weakItems.length} item${weakItems.length === 1 ? "" : "s"}`;
+
+  const list = document.createElement("div");
+  list.className = "weak-list";
+
+  if (weakItems.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No weak items yet. Answer a few review questions and they will appear here.";
+    list.append(empty);
+  }
+
+  for (const item of weakItems) {
+    const card = document.createElement("article");
+    card.className = "weak-card";
+
+    const heading = document.createElement("div");
+    heading.className = "phrase-heading";
+
+    const phrase = document.createElement("h3");
+    phrase.textContent = item.phrase || "Untitled phrase";
+
+    const type = document.createElement("span");
+    type.className = "phrase-type";
+    type.textContent = item.type || "unknown";
+
+    heading.append(phrase, type);
+
+    const meaning = document.createElement("p");
+    meaning.className = "phrase-meaning";
+    meaning.textContent = item.meaning || "No meaning provided.";
+
+    const progress = item.progress || {};
+    const progressGrid = document.createElement("div");
+    progressGrid.className = "progress-grid";
+    appendProgressDetail(progressGrid, "Wrong", progress.wrongCount ?? 0);
+    appendProgressDetail(progressGrid, "Attempts", progress.attempts ?? 0);
+    appendProgressDetail(progressGrid, "Mastery", progress.mastery ?? 0);
+    appendProgressDetail(progressGrid, "Status", progress.status || "new");
+
+    card.append(heading, meaning, progressGrid);
+    list.append(card);
+  }
+
+  weakSection.append(createBackButton(), title, count, list);
+}
+
+function renderWeakItemsError() {
+  weakSection.textContent = "";
+  showWeakItems();
+
+  const message = document.createElement("p");
+  message.className = "empty-state error";
+  message.textContent = "Weak items could not be loaded right now. Go back and try again.";
+
+  weakSection.append(createBackButton(), message);
+}
+
+function parseImportJson(text) {
+  let deck;
+
+  try {
+    deck = JSON.parse(text);
+  } catch (error) {
+    throw new Error("Import JSON is not valid.");
+  }
+
+  if (!deck || typeof deck !== "object") {
+    throw new Error("Import JSON must be an object.");
+  }
+
+  if (typeof deck.id !== "string" || deck.id.trim() === "") {
+    throw new Error("Deck id is required.");
+  }
+
+  if (typeof deck.title !== "string" || deck.title.trim() === "") {
+    throw new Error("Deck title is required.");
+  }
+
+  if (!Array.isArray(deck.phrases)) {
+    throw new Error("Deck phrases must be an array.");
+  }
+
+  return deck;
+}
+
+function renderImportView() {
+  importSection.textContent = "";
+  showImport();
+
+  const title = document.createElement("h2");
+  title.textContent = "Import Deck";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "import-textarea";
+  textarea.placeholder = `{
+  "id": "deck_war_doctor_ch1",
+  "title": "War Doctor Chapter 1",
+  "source": "War Doctor",
+  "phrases": [
+    {
+      "id": "phrase_run_into_001",
+      "phrase": "run into",
+      "type": "phrv",
+      "meaning": "meet someone by chance",
+      "example": "I ran into an old friend at the station.",
+      "pattern": "run into + person",
+      "trap": "Similar to come across, but often used for meeting people.",
+      "tags": ["daily", "B1"]
+    }
+  ]
+}`;
+
+  const importButton = document.createElement("button");
+  importButton.type = "button";
+  importButton.className = "primary-button";
+  importButton.textContent = "Import";
+
+  const message = document.createElement("p");
+  message.className = "import-message";
+
+  importButton.addEventListener("click", async () => {
+    message.textContent = "";
+    message.dataset.state = "";
+
+    try {
+      const deck = parseImportJson(textarea.value);
+      importButton.disabled = true;
+      importButton.textContent = "Importing...";
+
+      await postJson("/api/decks", {
+        id: deck.id,
+        title: deck.title,
+        sourceName: deck.source || deck.sourceName || "",
+      });
+
+      await postJson(`/api/decks/${encodeURIComponent(deck.id)}/phrases`, {
+        phrases: deck.phrases,
+      });
+
+      await loadDecks();
+      message.textContent = `Imported "${deck.title}" with ${deck.phrases.length} phrase${deck.phrases.length === 1 ? "" : "s"}.`;
+      message.dataset.state = "success";
+    } catch (error) {
+      message.textContent = error.message || "Import failed.";
+      message.dataset.state = "error";
+    } finally {
+      importButton.disabled = false;
+      importButton.textContent = "Import";
+    }
+  });
+
+  importSection.append(createBackButton(), title, textarea, importButton, message);
 }
 
 async function loadHealth() {
@@ -364,7 +616,26 @@ async function startReview() {
   }
 }
 
+async function loadWeakItems() {
+  weakSection.textContent = "";
+  showWeakItems();
+
+  const loading = document.createElement("p");
+  loading.className = "empty-state";
+  loading.textContent = "Loading weak items...";
+  weakSection.append(loading);
+
+  try {
+    const weak = await fetchJson("/api/weak");
+    renderWeakItems(weak.items);
+  } catch (error) {
+    renderWeakItemsError();
+  }
+}
+
 startReviewButton.addEventListener("click", startReview);
+weakItemsButton.addEventListener("click", loadWeakItems);
+importDeckButton.addEventListener("click", renderImportView);
 
 loadHealth();
 loadDecks();
